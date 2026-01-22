@@ -1,13 +1,10 @@
 package mate.academy;
 
 import java.util.List;
-import java.util.concurrent.Callable;
-import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.ForkJoinPool;
+import java.util.concurrent.*;
 
 public class EventManager {
-    private final ExecutorService executorService = ForkJoinPool.commonPool();
+    private final ExecutorService executorService = Executors.newFixedThreadPool(6);
 
     private final List<EventListener> listeners = new CopyOnWriteArrayList<>();
 
@@ -20,16 +17,12 @@ public class EventManager {
     }
 
     public void notifyEvent(Event event) {
-        try {
-            executorService.invokeAll(listeners.stream()
-                    .map(l -> (Callable<EventListener>) () -> {
-                        l.onEvent(event);
-                        return l;
-                    })
-                    .toList());
-        } catch (InterruptedException e) {
-            throw new RuntimeException("Exception during notifyEvent:", e);
-        }
+        listeners.stream()
+                .map(l -> (Callable<EventListener>) () -> {
+                    l.onEvent(event);
+                    return l;
+                })
+                .forEach(executorService::submit);
     }
 
     public void shutdown() {
