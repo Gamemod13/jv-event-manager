@@ -1,6 +1,7 @@
 package mate.academy;
 
 import java.util.List;
+import java.util.concurrent.Callable;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ForkJoinPool;
@@ -19,7 +20,16 @@ public class EventManager {
     }
 
     public void notifyEvent(Event event) {
-        listeners.forEach(e -> e.onEvent(event));
+        try {
+            executorService.invokeAll(listeners.stream()
+                    .map(l -> (Callable<EventListener>) () -> {
+                        l.onEvent(event);
+                        return l;
+                    })
+                    .toList());
+        } catch (InterruptedException e) {
+            throw new RuntimeException("Exception during notifyEvent:", e);
+        }
     }
 
     public void shutdown() {
